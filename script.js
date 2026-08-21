@@ -63,6 +63,11 @@ function escapeHtml(value){
  return String(value).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 }
 
+function apStatusLabel(s){return ({confirmado:"Confirmado",concluido:"Concluído",cancelado:"Cancelado"})[s]||s;}
+function apStatusClass(s){return ({confirmado:"confirmed",concluido:"completed",cancelado:"cancelled"})[s]||"";}
+function washStatusLabel(s){return ({pendente:"Pendente",aprovado:"Publicada",suspenso:"Suspensa",pausado:"Pausada"})[s]||s;}
+function washStatusClass(s){return ({pendente:"pending",suspenso:"suspended",pausado:"paused"})[s]||"";}
+
 function showPage(page,id=null){
  if(page==="home")renderHome();
  else if(page==="details")renderDetails(id);
@@ -170,34 +175,120 @@ function renderAppointments(){
  if(!list.length)content='<div class="empty"><h3>Você ainda não possui agendamentos</h3><p class="muted">Encontre uma lavação e escolha um serviço.</p><button class="btn primary" onclick="showPage(\'home\')">Encontrar lavações</button></div>';
  else content='<div class="grid">'+list.map(a=>{
   const w=db.washes.find(x=>x.id===a.wash),s=w.services.find(x=>x.id===a.service);
-  return '<div class="card"><div class="card-body"><span class="tag">'+escapeHtml(a.status)+'</span><h3>'+escapeHtml(w.name)+'</h3><p>'+escapeHtml(s.name)+'</p><p>🚗 '+(db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)?escapeHtml((db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)).brand+" "+(db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)).model+" — "+(db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)).plate):"Veículo não informado")+'</p><p>📅 '+formatDate(a.date)+' às '+a.time+'</p><p class="muted">📞 '+escapeHtml(a.phone)+'</p><strong>'+money(s.price)+'</strong></div></div>';
+  const cancelBtn=a.status==="confirmado"?'<button class="btn danger small full" style="margin-top:10px" onclick="cancelAppointmentClient('+a.id+')">Cancelar agendamento</button>':'';
+  return '<div class="card"><div class="card-body"><span class="tag '+apStatusClass(a.status)+'">'+apStatusLabel(a.status)+'</span><h3>'+escapeHtml(w.name)+'</h3><p>'+escapeHtml(s.name)+'</p><p>🚗 '+(db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)?escapeHtml((db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)).brand+" "+(db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)).model+" — "+(db.vehicles.find(x=>x.id===a.vehicle&&x.owner===current.id)).plate):"Veículo não informado")+'</p><p>📅 '+formatDate(a.date)+' às '+a.time+'</p><p class="muted">📞 '+escapeHtml(a.phone)+'</p><strong>'+money(s.price)+'</strong>'+cancelBtn+'</div></div>';
  }).join("")+'</div>';
  document.getElementById("app").innerHTML='<section class="section"><h2>Meus agendamentos</h2><p class="muted">Todos os agendamentos da sua conta.</p>'+content+'</section>';
 }
 
+function cancelAppointmentClient(id){
+ if(!current||current.role!=="cliente"){toast("Área exclusiva para Cliente.");return}
+ const a=db.appointments.find(x=>x.id===Number(id)&&x.client===current.id);
+ if(!a){toast("Agendamento não encontrado.");return}
+ if(a.status!=="confirmado"){toast("Este agendamento não pode mais ser cancelado.");return}
+ if(!confirm("Cancelar este agendamento?"))return;
+ a.status="cancelado";a.cancelledBy="cliente";
+ save();toast("Agendamento cancelado.");renderAppointments();
+}
+
 function formatDate(date){return new Date(date+"T12:00:00").toLocaleDateString("pt-BR")}
+
+let companyApFilter="todos";
+function setCompanyApFilter(f){companyApFilter=f;renderCompany();}
+
+function companyServiceStats(ownWashes,list){
+ const counts={};
+ list.filter(a=>a.status==="concluido").forEach(a=>{
+  const w=ownWashes.find(x=>x.id===a.wash);if(!w)return;
+  const s=w.services.find(x=>x.id===a.service);if(!s)return;
+  const key=w.name+" — "+s.name;
+  if(!counts[key])counts[key]={name:key,count:0,revenue:0};
+  counts[key].count++;counts[key].revenue+=Number(s.price);
+ });
+ return Object.values(counts).sort((a,b)=>b.count-a.count).slice(0,5);
+}
+function companyServiceStatsTable(rows){
+ if(!rows.length)return '<p class="muted">Ainda não há serviços concluídos para gerar estatísticas.</p>';
+ return '<div class="table-wrap"><table><tr><th>Serviço</th><th>Vendidos</th><th>Receita</th></tr>'+rows.map(r=>'<tr><td>'+escapeHtml(r.name)+'</td><td>'+r.count+'</td><td>'+money(r.revenue)+'</td></tr>').join("")+'</table></div>';
+}
 
 function renderCompany(){
  if(!current||current.role!=="empresa"){toast("Área exclusiva para Empresa.");return showPage("home")}
  const own=db.washes.filter(w=>w.owner===current.id);
  const ap=db.appointments.filter(a=>own.some(w=>w.id===a.wash));
+ const confirmados=ap.filter(a=>a.status==="confirmado");
+ const concluidos=ap.filter(a=>a.status==="concluido");
+ const cancelados=ap.filter(a=>a.status==="cancelado");
+ const revenue=concluidos.reduce((sum,a)=>{const w=own.find(x=>x.id===a.wash);const s=w?.services.find(x=>x.id===a.service);return sum+(s?Number(s.price):0);},0);
+ const filtered=companyApFilter==="todos"?ap:ap.filter(a=>a.status===companyApFilter);
+ const tabs=[["todos","Todos"],["confirmado","Confirmados"],["concluido","Concluídos"],["cancelado","Cancelados"]];
  document.getElementById("app").innerHTML=
- '<section class="section"><div class="section-head"><div><h2>Painel da empresa</h2><p class="muted">Gerencie suas lavações e acompanhe os agendamentos.</p></div><button class="btn primary" onclick="showCompanyForm()">+ Nova lavação</button></div>'+
- '<div class="stats"><div class="stat"><span class="muted">Lavações</span><strong>'+own.length+'</strong></div><div class="stat"><span class="muted">Publicadas</span><strong>'+own.filter(w=>w.status==="aprovado").length+'</strong></div><div class="stat"><span class="muted">Pendentes</span><strong>'+own.filter(w=>w.status==="pendente").length+'</strong></div><div class="stat"><span class="muted">Agendamentos</span><strong>'+ap.length+'</strong></div></div>'+
- '<div class="panel"><h3>Minhas lavações</h3>'+companyWashTable(own,true)+'</div>'+
- '<div class="panel" style="margin-top:18px"><h3>Agendamentos recebidos</h3>'+companyAppointments(ap)+'</div></section>';
+ '<section class="section"><div class="section-head"><div><h2>Painel da empresa</h2><p class="muted">Dashboard completo: lavações, agendamentos, status e faturamento.</p></div><button class="btn primary" onclick="showCompanyForm()">+ Nova lavação</button></div>'+
+ '<div class="stats">'+
+  '<div class="stat"><span class="muted">Lavações</span><strong>'+own.length+'</strong></div>'+
+  '<div class="stat"><span class="muted">Publicadas</span><strong>'+own.filter(w=>w.status==="aprovado").length+'</strong></div>'+
+  '<div class="stat"><span class="muted">Pausadas</span><strong>'+own.filter(w=>w.status==="pausado").length+'</strong></div>'+
+  '<div class="stat"><span class="muted">Pendentes</span><strong>'+own.filter(w=>w.status==="pendente").length+'</strong></div>'+
+ '</div>'+
+ '<div class="stats">'+
+  '<div class="stat"><span class="muted">Agendamentos confirmados</span><strong>'+confirmados.length+'</strong></div>'+
+  '<div class="stat"><span class="muted">Concluídos</span><strong>'+concluidos.length+'</strong></div>'+
+  '<div class="stat"><span class="muted">Cancelados</span><strong>'+cancelados.length+'</strong></div>'+
+  '<div class="stat"><span class="muted">Faturamento</span><strong>'+money(revenue)+'</strong></div>'+
+ '</div>'+
+ '<div class="panel"><h3>Minhas lavações</h3><p class="muted">Edite, pause ou reative suas lavações publicadas.</p>'+companyWashTable(own,true,false,true)+'</div>'+
+ '<div class="panel" style="margin-top:18px"><h3>Serviços mais vendidos</h3>'+companyServiceStatsTable(companyServiceStats(own,ap))+'</div>'+
+ '<div class="panel" style="margin-top:18px"><div class="row" style="align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Agendamentos</h3><div class="tabs">'+tabs.map(([key,label])=>'<button class="btn '+(companyApFilter===key?"primary":"outline")+' small" onclick="setCompanyApFilter(\''+key+'\')">'+label+'</button>').join("")+'</div></div>'+companyAppointments(filtered)+'</div></section>';
 }
 
-function companyWashTable(list,editable=false){
+function toggleWashPause(id){
+ if(!current||current.role!=="empresa"){toast("Área exclusiva para Empresa.");return}
+ const w=db.washes.find(x=>x.id===Number(id)&&x.owner===current.id);
+ if(!w){toast("Lavação não encontrada.");return}
+ if(w.status==="aprovado"){w.status="pausado";toast("Lavação pausada. Ela não aparecerá mais para clientes.");}
+ else if(w.status==="pausado"){w.status="aprovado";toast("Lavação reativada.");}
+ else {toast("Esta lavação depende da aprovação do administrador.");return}
+ save();renderCompany();
+}
+
+function companyWashTable(list,editable=false,fromAdmin=false,ownerControls=false){
  if(!list.length)return '<p class="muted">Nenhuma lavação cadastrada.</p>';
- return '<div class="table-wrap"><table><tr><th>Nome</th><th>Local</th><th>Serviços</th><th>Status</th><th>Ações</th></tr>'+list.map(w=>'<tr><td><b>'+escapeHtml(w.name)+'</b></td><td>'+escapeHtml(w.neighborhood)+', '+escapeHtml(w.city)+'</td><td>'+w.services.length+'</td><td><span class="tag '+(w.status==="pendente"?"pending":w.status==="suspenso"?"suspended":"")+'">'+w.status+'</span></td><td>'+(editable?'<button class="btn outline small" onclick="showEditWashForm('+w.id+','+editable+')">Editar</button>':'')+'</td></tr>').join("")+'</table></div>';
+ return '<div class="table-wrap"><table><tr><th>Nome</th><th>Local</th><th>Serviços</th><th>Status</th><th>Ações</th></tr>'+list.map(w=>{
+  let actions=editable?'<button class="btn outline small" onclick="showEditWashForm('+w.id+','+fromAdmin+')">Editar</button>':'';
+  if(ownerControls&&(w.status==="aprovado"||w.status==="pausado"))actions+=' <button class="btn '+(w.status==="aprovado"?"danger":"primary")+' small" onclick="toggleWashPause('+w.id+')">'+(w.status==="aprovado"?"Pausar":"Reativar")+'</button>';
+  return '<tr><td><b>'+escapeHtml(w.name)+'</b></td><td>'+escapeHtml(w.neighborhood)+', '+escapeHtml(w.city)+'</td><td>'+w.services.length+'</td><td><span class="tag '+washStatusClass(w.status)+'">'+washStatusLabel(w.status)+'</span></td><td style="white-space:nowrap">'+actions+'</td></tr>';
+ }).join("")+'</table></div>';
 }
 function companyAppointments(list){
- if(!list.length)return '<p class="muted">Nenhum agendamento recebido.</p>';
- return '<div class="table-wrap"><table><tr><th>Cliente</th><th>Telefone</th><th>Veículo</th><th>Serviço</th><th>Data/hora</th></tr>'+list.map(a=>{
+ if(!list.length)return '<p class="muted">Nenhum agendamento nesta categoria.</p>';
+ return '<div class="table-wrap"><table><tr><th>Cliente</th><th>Telefone</th><th>Veículo</th><th>Serviço</th><th>Data/hora</th><th>Status</th><th>Ações</th></tr>'+list.map(a=>{
   const u=db.users.find(x=>x.id===a.client),w=db.washes.find(x=>x.id===a.wash),s=w.services.find(x=>x.id===a.service);
-  const v=db.vehicles.find(x=>x.id===a.vehicle&&x.owner===a.client); return '<tr><td>'+escapeHtml(u?u.name:"Cliente")+'</td><td>'+escapeHtml(a.phone)+'</td><td>'+escapeHtml(v?(v.brand+" "+v.model+" — "+v.plate):"Não informado")+'</td><td>'+escapeHtml(s.name)+'</td><td>'+formatDate(a.date)+' '+a.time+'</td></tr>';
+  const v=db.vehicles.find(x=>x.id===a.vehicle&&x.owner===a.client);
+  const actions=a.status==="confirmado"?'<button class="btn primary small" onclick="completeAppointment('+a.id+')">Concluir</button> <button class="btn danger small" onclick="cancelAppointmentCompany('+a.id+')">Cancelar</button>':'';
+  return '<tr><td>'+escapeHtml(u?u.name:"Cliente")+'</td><td>'+escapeHtml(a.phone)+'</td><td>'+escapeHtml(v?(v.brand+" "+v.model+" — "+v.plate):"Não informado")+'</td><td>'+escapeHtml(s.name)+'</td><td>'+formatDate(a.date)+' '+a.time+'</td><td><span class="tag '+apStatusClass(a.status)+'">'+apStatusLabel(a.status)+'</span></td><td style="white-space:nowrap">'+actions+'</td></tr>';
  }).join("")+'</table></div>';
+}
+
+function completeAppointment(id){
+ if(!current||current.role!=="empresa"){toast("Área exclusiva para Empresa.");return}
+ const a=db.appointments.find(x=>x.id===Number(id));
+ if(!a){toast("Agendamento não encontrado.");return}
+ const w=db.washes.find(x=>x.id===a.wash);
+ if(!w||w.owner!==current.id){toast("Você não tem permissão sobre este agendamento.");return}
+ if(a.status!=="confirmado"){toast("Apenas agendamentos confirmados podem ser concluídos.");return}
+ a.status="concluido";
+ save();toast("Agendamento marcado como concluído.");renderCompany();
+}
+function cancelAppointmentCompany(id){
+ if(!current||current.role!=="empresa"){toast("Área exclusiva para Empresa.");return}
+ const a=db.appointments.find(x=>x.id===Number(id));
+ if(!a){toast("Agendamento não encontrado.");return}
+ const w=db.washes.find(x=>x.id===a.wash);
+ if(!w||w.owner!==current.id){toast("Você não tem permissão sobre este agendamento.");return}
+ if(a.status!=="confirmado"){toast("Este agendamento não pode mais ser cancelado.");return}
+ if(!confirm("Cancelar este agendamento?"))return;
+ a.status="cancelado";a.cancelledBy="empresa";
+ save();toast("Agendamento cancelado.");renderCompany();
 }
 
 function showCompanyForm(){
@@ -240,7 +331,7 @@ function saveWashEdit(e,id,fromAdmin){
  w.name=document.getElementById("eName").value.trim(); w.neighborhood=document.getElementById("eNeighborhood").value.trim(); w.city=document.getElementById("eCity").value.trim(); w.address=document.getElementById("eAddress").value.trim(); w.phone=document.getElementById("ePhone").value.trim(); w.hours=document.getElementById("eHours").value.trim(); w.description=document.getElementById("eDescription").value.trim(); w.amenities=splitList(document.getElementById("eAmenities").value); w.payments=splitList(document.getElementById("ePayments").value); w.services=services;
  save(); toast("Lavação atualizada com sucesso."); showPage(fromAdmin?"admin":"company");
 }
-function adminAllWashesEditor(){return '<div class="panel" style="margin-top:18px"><h3>Editar todas as lavações</h3><p class="muted">O administrador pode editar qualquer lavação.</p>'+companyWashTable(db.washes,true)+'</div>';}
+function adminAllWashesEditor(){return '<div class="panel" style="margin-top:18px"><h3>Editar todas as lavações</h3><p class="muted">O administrador pode editar qualquer lavação.</p>'+companyWashTable(db.washes,true,true,false)+'</div>';}
 function renderAdmin(){
  if(!current||current.role!=="admin"){toast("Área exclusiva para Admin.");return showPage("home")}
  const clients=db.users.filter(u=>u.role==="cliente").length;
@@ -248,20 +339,22 @@ function renderAdmin(){
  const published=db.washes.filter(w=>w.status==="aprovado");
  const pending=db.washes.filter(w=>w.status==="pendente");
  const suspended=db.washes.filter(w=>w.status==="suspenso");
+ const paused=db.washes.filter(w=>w.status==="pausado");
  document.getElementById("app").innerHTML=
  '<section class="section"><h2>Painel administrativo</h2><p class="muted">Controle e moderação da plataforma.</p>'+
  '<div class="stats"><div class="stat"><span class="muted">Clientes</span><strong>'+clients+'</strong></div><div class="stat"><span class="muted">Empresas</span><strong>'+companies+'</strong></div><div class="stat"><span class="muted">Lavações publicadas</span><strong>'+published.length+'</strong></div><div class="stat"><span class="muted">Agendamentos</span><strong>'+db.appointments.length+'</strong></div></div>'+
  '<div class="panel"><h3>Pendentes</h3>'+pending.map(adminRow).join("")+(pending.length?"":'<p class="muted">Nenhuma lavação pendente.</p>')+'</div>'+
  '<div class="panel" style="margin-top:18px"><h3>Publicadas</h3>'+published.map(adminRow).join("")+(published.length?"":'<p class="muted">Nenhuma lavação publicada.</p>')+'</div>'+
+ '<div class="panel" style="margin-top:18px"><h3>Pausadas pela empresa</h3>'+paused.map(adminRow).join("")+(paused.length?"":'<p class="muted">Nenhuma lavação pausada.</p>')+'</div>'+
  '<div class="panel" style="margin-top:18px"><h3>Suspensas</h3>'+suspended.map(adminRow).join("")+(suspended.length?"":'<p class="muted">Nenhuma lavação suspensa.</p>')+'</div>'+adminAllWashesEditor()+'</section>';
 }
 function adminRow(w){
  let actions="";
  if(w.status==="pendente")actions='<button class="btn primary small" onclick="moderate('+w.id+',\'aprovado\')">Aprovar</button><button class="btn danger small" onclick="moderate('+w.id+',\'removido\')">Recusar</button>';
- if(w.status==="aprovado")actions='<button class="btn outline small" onclick="moderate('+w.id+',\'suspenso\')">Suspender</button>';
+ if(w.status==="aprovado"||w.status==="pausado")actions='<button class="btn outline small" onclick="moderate('+w.id+',\'suspenso\')">Suspender</button>';
  if(w.status==="suspenso")actions='<button class="btn primary small" onclick="moderate('+w.id+',\'aprovado\')">Reativar</button>';
  actions+='<button class="btn danger small" onclick="removeWash('+w.id+')">Excluir</button>';
- return '<div class="service"><div><b>'+escapeHtml(w.name)+'</b><div class="muted">'+escapeHtml(w.neighborhood)+', '+escapeHtml(w.city)+' · '+w.status+'</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">'+actions+'</div></div>';
+ return '<div class="service"><div><b>'+escapeHtml(w.name)+'</b><div class="muted">'+escapeHtml(w.neighborhood)+', '+escapeHtml(w.city)+' · '+washStatusLabel(w.status)+'</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">'+actions+'</div></div>';
 }
 function moderate(id,status){
  if(status==="removido")db.washes=db.washes.filter(w=>w.id!==id);
