@@ -1,0 +1,82 @@
+*{box-sizing:border-box}
+:root{--green:#4f46e5;--dark:#15153a;--bg:#f5f7f6;--text:#17221b;--muted:#68746d;--line:#e0e7e2;--white:#fff;--shadow:0 15px 45px rgba(15,40,25,.09)}
+html{scroll-behavior:smooth;height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.topbar{flex-shrink:0}
+main#app{flex:1 0 auto}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+.hidden{display:none!important}
+.topbar{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 6%;gap:38px;position:sticky;top:0;z-index:20}
+.brand{font-size:28px;font-weight:850;letter-spacing:-1.5px}
+.brand span{color:var(--green)}
+.topbar nav{display:flex;gap:28px;flex:1}
+.topbar nav a{font-size:14px;color:#536059;font-weight:650}
+#accountArea{display:flex;gap:8px;align-items:center}
+.btn{border:0;border-radius:10px;padding:11px 17px;font-size:14px;font-weight:750}
+.btn.primary{background:var(--green);color:#fff}
+.btn.primary:hover{background:#4338ca}
+.btn.outline{background:#fff;color:var(--text);border:1px solid var(--line)}
+.btn.full{width:100%;margin-top:8px}
+.btn.danger{background:#fff0f0;color:#c83e3e}
+.btn.small{padding:8px 11px;font-size:12px}
+.hero{background:linear-gradient(120deg,#171a46 0%,#3730a3 100%);color:#fff;padding:72px 6% 78px; clip-path: ellipse(150% 100% at 50% 0%)}
+.hero-inner{max-width:1120px;margin:auto}
+.eyebrow{color:#c7d2fe;text-transform:uppercase;letter-spacing:2px;font-size:12px;font-weight:850}
+.hero h1{font-size:56px;line-height:1;letter-spacing:-2px;max-width:650px;margin:14px 0}
+.hero p{font-size:18px;line-height:1.6;color:#ffffffc9;max-width:620px}
+.search{background:#fff;border-radius:14px;padding:8px;display:flex;max-width:800px;margin-top:28px;box-shadow:var(--shadow)}
+.search input{border:0;outline:0;flex:1;padding:13px;font-size:15px}
+.chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+.chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:30px;padding:8px 13px}
+.section{max-width:1120px;margin:auto;padding:48px 0}
+.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:22px}
+.section h2{font-size:28px;margin:0 0 5px}
+.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:17px;overflow:hidden;box-shadow:0 5px 22px rgba(20,40,28,.035)}
+.car-art{height:145px;background:linear-gradient(135deg,#8bb0ff,#eff4fa);display:grid;place-items:center;font-size:52px}
+.card-body{padding:18px}
+.card h3{margin:0 0 5px;font-size:19px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tag{display:inline-block;border-radius:30px;background:#eef2ff;color:#4338ca;padding:5px 9px;font-size:11px;font-weight:800}
+.tag.pending{background:#fff3d7;color:#996b00}
+.tag.suspended{background:#ffe7e7;color:#a52f2f}
+.rating{font-size:13px;color:#a46d00}
+.price{font-weight:800;margin:8px 0}
+.company-banner{background:#fff;border:1px solid var(--line);border-radius:18px;padding:25px}
+.footer{background:#11142d;color:#b8bdd6;padding:42px 6%;margin-top:10px;flex-shrink:0}
+.footer b{color:#fff;font-size:24px}
+.details{max-width:1050px;margin:auto;padding:42px 20px}
+.detail-head{background:#e8eaff;border-radius:20px;padding:32px;margin:15px 0 20px}
+.two{display:grid;grid-template-columns:1.4fr .8fr;gap:18px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px}
+.service{display:flex;justify-content:space-between;align-items:center;padding:17px 0;border-top:1px solid var(--line)}
+.service:first-child{border-top:0}
+.service h4{margin:0 0 4px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:19px}
+.stat strong{display:block;font-size:30px;margin-top:4px}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:13px;border-bottom:1px solid var(--line);font-size:13px}
+.empty{background:#fff;border:1px dashed #cbd7d0;border-radius:17px;text-align:center;padding:50px}
+.notice{background:#eef2ff;border-radius:10px;padding:13px;font-size:13px;margin:12px 0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:13px;font-weight:750;margin:14px 0 5px}
+input,select,textarea{width:100%;border:1px solid #d6dfd9;border-radius:9px;padding:12px;outline:0;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.modal{position:fixed;inset:0;background:rgba(4,16,10,.58);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal-box{background:#fff;width:100%;max-width:460px;border-radius:20px;padding:28px;position:relative;max-height:90vh;overflow:auto}
+.modal-box h2{margin:0 0 5px}
+.modal-close{position:absolute;right:16px;top:12px;border:0;background:none;font-size:28px;color:#68746d}
+.demo{display:grid;gap:4px;background:#f2f6f3;border-radius:10px;padding:13px;margin-top:18px;font-size:12px}
+.toast{position:fixed;right:20px;bottom:20px;background:#14231a;color:#fff;padding:13px 17px;border-radius:10px;z-index:100;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:800px){
+ .topbar{padding:0 4%;gap:15px}.topbar nav{display:none}.hero{padding:48px 5%}.hero h1{font-size:40px}.section{padding:38px 5%}.grid,.two,.stats{grid-template-columns:1fr}.search{display:block;background:transparent;padding:0}.search input{background:#fff;border-radius:10px;margin-bottom:8px}.search .btn{width:100%}.form-grid{grid-template-columns:1fr}.topbar #accountArea .outline{display:none}
+}
+.service-edit{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#fafbff}.service-edit+.service-edit{margin-top:10px}
+
+.vehicle-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
