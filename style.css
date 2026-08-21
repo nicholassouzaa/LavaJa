@@ -43,6 +43,11 @@ a{text-decoration:none;color:inherit}
 .tag{display:inline-block;border-radius:30px;background:#eef2ff;color:#4338ca;padding:5px 9px;font-size:11px;font-weight:800}
 .tag.pending{background:#fff3d7;color:#996b00}
 .tag.suspended{background:#ffe7e7;color:#a52f2f}
+.tag.paused{background:#eef1f5;color:#51606b}
+.tag.confirmed{background:#eef2ff;color:#4338ca}
+.tag.completed{background:#e5f7ec;color:#1f8a4c}
+.tag.cancelled{background:#ffe7e7;color:#a52f2f}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
 .rating{font-size:13px;color:#a46d00}
 .price{font-weight:800;margin:8px 0}
 .company-banner{background:#fff;border:1px solid var(--line);border-radius:18px;padding:25px}
